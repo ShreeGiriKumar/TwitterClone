@@ -1,0 +1,281 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+
+<style>
+    .tweetsSection {
+        border: 1px solid whitesmoke;
+        width: 800px;
+        height: 600px;
+        overflow-y: scroll;
+        margin-left: 20px;
+    }
+
+    .tweetOverflow {
+        overflow-y: scroll;
+    }
+
+    .tweetWrap {
+        word-wrap: break-word;
+    }
+
+    textarea {
+        width: 800px;
+        max-width: 800px;
+    }
+
+    .spanFont {
+        font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
+    }
+
+    .buttonOption {
+        background-color: Transparent;
+        padding-left: 2px;
+        border: none;
+        outline: none;
+        float: right;
+    }
+
+    .borderClass {
+        border-color: #5bc0de;
+        border-width: 1px;
+        border-style: solid;
+    }
+</style>
+
+
+
+<br />
+<br />
+<div class="container">
+    <div class="row col-md-12">
+        <div class="input-group col-md-3">
+            <span for="txtSearch" class="spanFont">Follow</span>
+            <div class="input-group">
+                <input type="text" class="form-control input-sm" placeholder="Search Person" name="search" id="txtUserId">
+                <div class="input-group-btn">
+                    <button class="btn btn-default btn-sm" type="button" id="btnSearchUser"><i class="glyphicon glyphicon-search"></i></button>
+                </div>
+            </div>
+            <div id="searchResult">
+
+            </div>
+        </div>
+        <div class="col-md-9">
+            <div class="form-group">
+                <span for="txtAreaTweet" class="spanFont">What are you doing?</span>
+                <textarea class="form-control textarea" rows="3" cols="75" id="txtAreaTweet" maxlength="140"></textarea>
+                <input type="hidden" id="hdnTweetId" />
+            </div>
+        </div>
+    </div>
+    <div class="row col-md-12">
+        <div class="col-md-12">
+            <input type="submit" value="Update" id="addTweet" class="btn btn-primary btn-sm col-md-offset-11" />
+        </div>
+    </div>
+    <br />
+    <div class="row col-md-12">
+        <div class="col-md-3">
+            <span id="tweets" class="sideSpan"></span><span class="spanFont">Tweets</span><br>
+            <span id="following" class="sideSpan"></span><span class="spanFont">Following</span><br>
+            <span id="followers" class="sideSpan"></span><span class="spanFont">Followers</span><br>
+        </div>
+        <div class="col-md-12 tweetsSection" id="tweetBody">
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jquery")
+
+    <script type="text/javascript">
+
+        $(document).ready(function () {
+
+            function getAllTweets() {
+                $.ajax({
+                    type: "GET",
+                    url: "/Home/AllTweets", //URI
+
+                    dataType: "json",
+                    success: function (data) {
+                        if (data != null) {
+                            $("#tweetBody").empty();
+                            $.each(data, function (i, tweet) {
+
+                                var ele = '<div class="well tweetOverflow"><div class="col-sm-2">' + tweet.UserId + '</div>' +
+                                    '<div class="col-sm-7 tweetWrap">' + tweet.Message + '</div>' +
+                                    '<div class="col-sm-3" style="float:right">' + tweet.Created + '</div>';
+
+                                if (tweet.IsMyTweet) {
+                                    ele += '<button type="button" class="buttonOption delete" value="' + tweet.TweetId + '"><i class="glyphicon glyphicon-trash"></i></button>' +
+                                        '<button type="button" class="buttonOption edit" value="' + tweet.TweetId + '"><i class="glyphicon glyphicon-pencil"></i></button></div>';
+                                }
+                                else
+                                    ele += '</div>';
+
+                                $("#tweetBody").append(ele);
+                            });
+                        }
+                        else {
+                        }
+                    },
+                    error: function (xhr) {
+                        alert(xhr.responseText);
+                    }
+                });
+            }
+
+            $('#tweetBody').on('click', '.delete', function () {
+                var tweetId = $(this).val();
+                $.ajax({
+                    type: "GET",
+                    url: "/Home/DeleteTweet",
+                    data: { tweetId: tweetId },
+                    dataType: "json",
+                    success: function (data) {
+                        getAllTweets();
+                    },
+                    error: function (xhr) {
+                        alert(xhr.responseText);
+                    }
+                });
+            });
+
+
+            $('#tweetBody').on('click', '.edit', function () {
+                var tweetId = $(this).val();
+                $.ajax({
+                    type: "GET",
+                    url: "/Home/GetTweet",
+                    data: { tweetId: tweetId },
+                    dataType: "json",
+                    success: function (data) {
+                        if (data != null) {
+                            $('#txtAreaTweet').val(data.Message);
+                            $('#hdnTweetId').val(data.TweetId);
+                        }
+                    },
+                    error: function (xhr) {
+                        alert(xhr.responseText);
+                    }
+                });
+            });
+
+            $('#addTweet').click(function () {
+                var tweet = $('#txtAreaTweet').val();
+
+                if ($('#hdnTweetId').val() != "") {  //Edit
+
+                    $.ajax({
+                        type: "GET",
+                        data: { tweet: tweet, tweetId: parseInt($('#hdnTweetId').val()) },
+                        url: "/Home/EditTweet",
+                        dataType: "json",
+                        contentType: "application/json",
+                        success: function (data) {
+                            getAllTweets();
+                            $('#hdnTweetId').val("");
+                            $('#txtAreaTweet').val("");
+                        },
+                        error: function (xhr) {
+                            alert(xhr.responseText);
+                        }
+                    });
+                }
+
+                else {  //New Tweet
+                    $.ajax({
+                        type: "GET",
+                        data: { tweet: tweet },
+                        url: "/Home/PostTweet",
+                        dataType: "json",
+                        contentType: "application/json",
+                        success: function (data) {
+                            $('#txtAreaTweet').val("");
+                            getAllTweets();
+                        },
+                        error: function (xhr) {
+                            alert(xhr.responseText);
+                        }
+                    });
+                }
+            });
+
+
+            function getFollowInfo() {
+                $.ajax({
+                    type: "GET",
+                    url: "/Home/TweetFollowCount", //URI
+
+                    dataType: "json",
+                    success: function (data) {
+                        if (data != null) {
+                            $('#tweets').text(data.tweetCount);
+                            $('#following').text(data.following);
+                            $('#followers').text(data.followers);
+                        }
+                        else {
+                            $('#tweets').text(0);
+                            $('#following').text(0);
+                            $('#followers').text(0);
+                        }
+                    },
+                    error: function (xhr) {
+                        alert(xhr.responseText);
+                    }
+                });
+            }
+
+
+            $('#btnSearchUser').click(function () {
+                $('#searchResult').empty();
+                $('#searchResult').addClass('borderClass');
+                $.ajax({
+                    type: "GET",
+                    data: { userId: $('#txtUserId').val() },
+                    url: "/Home/SearchPerson",
+                    dataType: "json",
+                    contentType: "application/json",
+                    success: function (data) {
+                        if (data) {
+                            $('#searchResult').append($('#txtUserId').val() + '<a href="#" value="' + $('#txtUserId').val() + '" class="btn btn-primary btn-xs">Follow</a>');
+                        }
+                        else {
+                            $('#searchResult').append('User not found');
+                        }
+                    },
+                    error: function (xhr) {
+                        alert(xhr.responseText);
+                    }
+                });
+            });
+
+            $('#searchResult').on('click', '.btn-xs', function () {                
+                $.ajax({
+                    type: "GET",
+                    url: "/Home/FollowPerson",
+                    data: { followingUserId: $('#txtUserId').val() },
+                    dataType: "json",
+                    success: function (data) {
+                        if (data != null) {
+                            getFollowInfo();
+                            getAllTweets();
+                        }
+                    },
+                    error: function (xhr) {
+                        alert(xhr.responseText);
+                    }
+                });
+            });
+
+            getFollowInfo();
+            getAllTweets();
+
+            setInterval(getFollowInfo, 3000);
+            setInterval(getAllTweets, 2000);
+
+        });
+    </script>
+}
